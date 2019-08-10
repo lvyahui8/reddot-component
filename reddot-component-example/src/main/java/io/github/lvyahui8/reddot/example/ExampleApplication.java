@@ -10,6 +10,7 @@ import io.github.lvyahui8.reddot.processor.ReddotTree;
 @ReddotTree("reddot.yml")
 public class ExampleApplication {
     public static void main(String[] args) {
-        System.out.println(Reddot.ReddotA.app_root.name());
+        System.out.println(Reddot._root.name());
+        System.out.println(Reddot.sys_message.getLevel());
     }
 }

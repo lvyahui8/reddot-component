@@ -1,5 +1,6 @@
 user_profile:
   posts:
+  pins:
 message_box:
   user_message:
   sys_message:

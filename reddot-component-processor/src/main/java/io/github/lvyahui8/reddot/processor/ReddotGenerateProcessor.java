@@ -1,6 +1,7 @@
 package io.github.lvyahui8.reddot.processor;
 
 import org.apache.commons.io.IOUtils;
+import org.yaml.snakeyaml.Yaml;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -13,8 +14,7 @@ import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Writer;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 参考:
@@ -59,32 +59,54 @@ public class ReddotGenerateProcessor extends AbstractProcessor {
                     writer.write("package " + pkg + ";\n");
                     writer.write("import io.github.lvyahui8.reddot.model.IReddot;\n");
                     writer.write("import java.util.*;\n");
-                    writer.write("public class Reddot {\n");
+                    writer.write("public enum Reddot implements IReddot { \n");
+                    writer.write("  _root(null),\n");
+                    Yaml yaml = new Yaml();
                     for (Element element : elements) {
                         messager.printMessage(Diagnostic.Kind.NOTE,"handle element",element);
                         if(element.getKind() == ElementKind.CLASS){
                             ReddotTree reddotTree = element.getAnnotation(ReddotTree.class);
                             InputStream stream = getClass().getClassLoader().getResourceAsStream(reddotTree.value());
+                            if (stream == null) {
+                                messager.printMessage(Diagnostic.Kind.ERROR,"reddot config file not found:" + reddotTree.value());
+                                return false;
+                            }
+                            Map<String,Object> trees = yaml.load(stream);
+                            Map<String,Object> rootMap = Collections.singletonMap("_root",trees);
+                            System.out.println(rootMap);
+                            Queue<Map.Entry<String, Object>> queue = new LinkedList<Map.Entry<String, Object>>();
+                            Map.Entry<String, Object> current = rootMap.entrySet().iterator().next();
+                            queue.add(current);
+                            while(! queue.isEmpty()) {
+                                current = queue.poll();
+                                Object vv = current.getValue();
+                                if(vv instanceof Map && !((Map) vv).isEmpty()) {
+                                    for (Map.Entry<String,Object> i : ((Map<String,Object>) vv).entrySet()) {
+                                        queue.offer(i);
+                                        writer.write("  " + i.getKey() + "(" + current.getKey() + "),\n");
+                                    }
+                                }
+                            }
                             messager.printMessage(Diagnostic.Kind.NOTE,"reddotTree :" + reddotTree.toString());
                             messager.printMessage(Diagnostic.Kind.NOTE,"reddotTree :" + IOUtils.toString(stream,"UTF-8"));
                         }
                     }
-                    writer.write("  public static enum ReddotA implements IReddot { \n");
-                    writer.write("    app_root(null),\n");
-                    writer.write("    ;\n");
-                    writer.write("    private ReddotA parent;\n");
-                    writer.write("    private Set<IReddot> children = new HashSet<>(1);\n");
-                    writer.write("    ReddotA(ReddotA parent){\n");
-                    writer.write("        this.parent = parent;\n");
-                    writer.write("        if(parent != null) {\n");
-                    writer.write("            parent.getChildren().add(this);\n");
-                    writer.write("        }\n");
-                    writer.write("    }\n");
-                    writer.write("    @Override public boolean isLeaf() { return children.isEmpty(); }\n");
-                    writer.write("    @Override public IReddot getParent() {  return parent; }\n");
-                    writer.write("    @Override public Set<IReddot> getChildren() {  return children; }\n");
+                    writer.write("  ;\n");
+                    writer.write("  private Reddot parent;\n");
+                    writer.write("  private int level;\n");
+                    writer.write("  private Set<IReddot> children = new HashSet<>(1);\n");
+                    writer.write("  Reddot(Reddot parent){\n");
+                    writer.write("      this.parent = parent;\n");
+                    writer.write("      if(parent != null) {\n");
+                    writer.write("          parent.getChildren().add(this);\n");
+                    writer.write("          level = parent.level + 1;\n");
+                    writer.write("      } else { level = 0;}\n");
                     writer.write("  }\n");
-                    writer.write("\n}");
+                    writer.write("  @Override public boolean isLeaf() { return children.isEmpty(); }\n");
+                    writer.write("  @Override public IReddot getParent() {  return parent; }\n");
+                    writer.write("  @Override public Set<IReddot> getChildren() {  return children; }\n");
+                    writer.write("  @Override public int getLevel() {  return level; }\n");
+                    writer.write("}\n");
                     writer.flush();
                 } catch (Exception e) {
                     messager.printMessage(Diagnostic.Kind.ERROR,"handle element failed. eMsg:" + e.getMessage());

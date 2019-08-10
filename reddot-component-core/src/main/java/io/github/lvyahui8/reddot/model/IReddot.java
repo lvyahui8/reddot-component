@@ -26,4 +26,11 @@ public interface IReddot {
      * @return 孩子红点集合
      */
     Set<IReddot> getChildren();
+
+    /**
+     * 获取红点层级
+     *
+     * @return 层级
+     */
+    int getLevel();
 }
