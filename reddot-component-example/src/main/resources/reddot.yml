@@ -1,0 +1,5 @@
+app_root:
+  user_profile:
+    - new_post
+  message_box:
+    - new_message
