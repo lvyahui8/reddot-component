@@ -8,6 +8,12 @@ import java.util.Set;
  */
 public interface IReddot {
     /**
+     * 获取红点的唯一标识
+     *
+     * @return 唯一标识
+     */
+    String getUniqKey();
+    /**
      * 是否是叶子红点
      *
      * @return  xx

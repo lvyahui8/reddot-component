@@ -8,7 +8,6 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 import java.io.IOException;
@@ -26,9 +25,8 @@ import java.util.*;
  * @author lvyahui (lvyahui8@gmail.com,lvyahui8@126.com)
  * @since 2019/8/10 22:33
  */
-@SupportedAnnotationTypes({"io.github.lvyahui8.reddot.annotation.ReddotTree"})
+@SupportedAnnotationTypes({"io.github.lvyahui8.reddot.processor.ReddotTree"})
 public class ReddotGenerateProcessor extends AbstractProcessor {
-    private Elements elementUtils;
     private Messager messager;
     private Filer filer;
 
@@ -36,7 +34,6 @@ public class ReddotGenerateProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         messager = processingEnv.getMessager();
-        elementUtils = processingEnv.getElementUtils();
         filer = processingEnv.getFiler();
     }
 
@@ -102,6 +99,7 @@ public class ReddotGenerateProcessor extends AbstractProcessor {
                     writer.write("          level = parent.level + 1;\n");
                     writer.write("      } else { level = 0;}\n");
                     writer.write("  }\n");
+                    writer.write("  @Override public String getUniqKey() { return this.name(); }\n");
                     writer.write("  @Override public boolean isLeaf() { return children.isEmpty(); }\n");
                     writer.write("  @Override public IReddot getParent() {  return parent; }\n");
                     writer.write("  @Override public Set<IReddot> getChildren() {  return children; }\n");
