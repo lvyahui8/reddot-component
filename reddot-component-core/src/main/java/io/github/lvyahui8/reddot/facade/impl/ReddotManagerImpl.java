@@ -102,14 +102,15 @@ public class ReddotManagerImpl implements ReddotManager {
                     break;
                 }
 
-                if(! reddot.isLeaf()) {
-                    instance.getActivatedChildren().remove(reddot.getUniqKey());
+                if(prev != null) {
+                    instance.getActivatedChildren().remove(prev.getUniqKey());
                 }
 
                 if(reddot.isLeaf() || instance.getActivatedChildren().isEmpty()) {
                     instance.setActive(false);
                     updatedInstanceMap.put(reddot,instance);
                 }
+                prev = current;
             } while((current = current.getParent()) != null);
         }
         reddotRepository.saveInstances(dimension,updatedInstanceMap);
