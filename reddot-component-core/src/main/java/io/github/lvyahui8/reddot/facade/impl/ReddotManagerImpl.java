@@ -4,8 +4,9 @@ import io.github.lvyahui8.reddot.facade.ReddotManager;
 import io.github.lvyahui8.reddot.model.IReddot;
 import io.github.lvyahui8.reddot.model.ReddotInstance;
 import io.github.lvyahui8.reddot.repository.ReddotRepository;
+import io.github.lvyahui8.reddot.utils.ReddotUtils;
 
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author lvyahui (lvyahui8@gmail.com,lvyahui8@126.com)
@@ -20,12 +21,12 @@ public class ReddotManagerImpl implements ReddotManager {
     }
 
     @Override
-    public boolean enable(Object dimension, IReddot reddot) {
+    public boolean enable(String dimension, IReddot reddot) {
         return enable(dimension, reddot, null);
     }
 
     @Override
-    public boolean enable(Object dimension, IReddot reddot, Long version) {
+    public boolean enable(String dimension, IReddot reddot, Long version) {
         if (dimension == null || reddot == null) {
             throw new IllegalArgumentException("dimension and reddot must be not null");
         }
@@ -34,35 +35,83 @@ public class ReddotManagerImpl implements ReddotManager {
         }
 
         if (version != null) {
-            ReddotInstance reddotInstance = reddotRepository.queryInstance(dimension.toString(), reddot);
+            ReddotInstance reddotInstance = reddotRepository.queryReddotInstance(dimension, reddot);
             if(reddotInstance != null
                     && reddotInstance.getVersion() != null
             && reddotInstance.getVersion() >= version) {
-                /* 幂等掉拒绝更新 */
                 return false;
             }
         }
 
-        ReddotInstance reddotInstance = new ReddotInstance();
-        reddotInstance.setActive(true);
-        reddotInstance.setVersion(version);
-
-        return false;
+        Set<IReddot> reddots = ReddotUtils.getReddotsIncludeAncestors(reddot);
+        Map<IReddot,ReddotInstance> reddotMap = reddotRepository.queryReddotInstanceMap(dimension,reddots);
+        Map<IReddot,ReddotInstance> updatedMap = new HashMap<>(reddotMap.size());
+        IReddot current = reddot;
+        IReddot prev = null;
+        do {
+            ReddotInstance reddotInstance = reddotMap.get(current) != null ? reddotMap.get(current)
+                    : new ReddotInstance();
+            reddotInstance.setActive(true);
+            if(current.isLeaf()) {
+                reddotInstance.setVersion(version);
+            } else if(prev != null)  {
+                if(reddotInstance.getActivatedChildren().contains(prev.getUniqKey())) {
+                    break;
+                }
+                reddotInstance.getActivatedChildren().add(prev.getUniqKey());
+            }
+            updatedMap.put(current,reddotInstance);
+            prev = current;
+        } while((current = current.getParent()) != null);
+        reddotRepository.saveInstances(dimension,updatedMap);
+        return true;
     }
 
     @Override
-    public boolean readStatus(Object dimension, IReddot reddot) {
+    public boolean readStatus(String dimension, IReddot reddot) {
         Map<IReddot, Boolean> statusMap = readStatusMap(dimension, reddot);
         return statusMap.get(reddot);
     }
 
     @Override
-    public Map<IReddot, Boolean> readStatusMap(Object dimension, IReddot... reddots) {
-        return null;
+    public Map<IReddot, Boolean> readStatusMap(String dimension, IReddot ... reddots) {
+        Map<IReddot, ReddotInstance> reddotInstanceMap = reddotRepository.queryReddotInstanceMap(dimension,
+                new HashSet<>(Arrays.asList(reddots)));
+        Map<IReddot,Boolean> resultMap = new HashMap<>(reddots.length);
+        for (IReddot reddot : reddots) {
+            resultMap.put(reddot,reddotInstanceMap.containsKey(reddot) && reddotInstanceMap.get(reddot).isActive());
+        }
+        return resultMap;
     }
 
     @Override
-    public void disable(Object dimension, IReddot... reddots) {
+    public void disable(String dimension, IReddot... reddots) {
+        Set<IReddot> allReddot = new HashSet<>(reddots.length);
+        for (IReddot reddot : reddots) {
+            allReddot.addAll(ReddotUtils.getReddotsIncludeAncestors(reddot));
+        }
 
+        Map<IReddot, ReddotInstance> reddotInstanceMap = reddotRepository.queryReddotInstanceMap(dimension, allReddot);
+        Map<IReddot,ReddotInstance> updatedInstanceMap = new HashMap<>(reddotInstanceMap.size());
+        for (IReddot reddot : reddots) {
+            IReddot current =  reddot;
+            IReddot prev = null;
+            do {
+                ReddotInstance instance = reddotInstanceMap.get(current);
+                if(! instance.isActive()) {
+                    break;
+                }
+
+                if(! reddot.isLeaf()) {
+                    instance.getActivatedChildren().remove(reddot.getUniqKey());
+                }
+
+                if(reddot.isLeaf() || instance.getActivatedChildren().isEmpty()) {
+                    instance.setActive(false);
+                    updatedInstanceMap.put(reddot,instance);
+                }
+            } while((current = current.getParent()) != null);
+        }
+        reddotRepository.saveInstances(dimension,updatedInstanceMap);
     }
 }

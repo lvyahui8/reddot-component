@@ -4,6 +4,7 @@ import io.github.lvyahui8.reddot.model.IReddot;
 import io.github.lvyahui8.reddot.model.ReddotInstance;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * @author lvyahui (lvyahui8@gmail.com,lvyahui8@126.com)
@@ -17,13 +18,22 @@ public interface ReddotRepository {
      * @param reddot 要查询的红点
      * @return 红点示例
      */
-    ReddotInstance queryInstance(String dimensionKey, IReddot reddot);
+    ReddotInstance queryReddotInstance(String dimensionKey, IReddot reddot);
 
     /**
      * 保存红点实例
      *
-     * @param dimensionKey 红点维度, 一般是userId
+     * @param dimension 红点维度, 一般是userId
      * @param instanceMap 红点实例map
      */
-    void saveInstances(String dimensionKey, Map<IReddot,ReddotInstance> instanceMap);
+    void saveInstances(String dimension, Map<IReddot,ReddotInstance> instanceMap);
+
+    /**
+     * 根据红点查询红点实例
+     *
+     * @param dimension 红点维度, 一般是userId
+     * @param reddots 要查询的红点集合
+     * @return 红点与红点实例映射
+     */
+    Map<IReddot, ReddotInstance> queryReddotInstanceMap(String dimension, Set<IReddot> reddots);
 }

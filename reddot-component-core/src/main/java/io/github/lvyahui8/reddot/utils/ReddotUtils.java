@@ -10,10 +10,10 @@ import java.util.Set;
  * @since 2019/8/11 23:45
  */
 public class ReddotUtils {
-    public static Set<String> getRelationReddot(IReddot reddot) {
-        Set<String> reddotKeys = new HashSet<>(reddot.getLevel() + 1);
+    public static Set<IReddot> getReddotsIncludeAncestors(IReddot reddot) {
+        Set<IReddot> reddotKeys = new HashSet<>(reddot.getLevel() + 1);
         do {
-            reddotKeys.add(reddot.getUniqKey());
+            reddotKeys.add(reddot);
         } while((reddot = reddot.getParent()) != null) ;
         return reddotKeys;
     }
